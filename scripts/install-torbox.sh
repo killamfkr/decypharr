@@ -1,19 +1,24 @@
 #!/usr/bin/env bash
-# Decypharr + Rclone quick installer for TorBox
+# Decypharr + Rclone quick installer for TorBox (Ubuntu / CasaOS)
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/sirrobot01/decypharr/main/scripts/install-torbox.sh | bash
 #   curl -fsSL ... | TORBOX_API_KEY="your-key" bash
 #   curl -fsSL ... | bash -s -- --yes
 set -euo pipefail
 
-VERSION="1.0.0"
+VERSION="1.1.0"
 NON_INTERACTIVE=false
 INSTALL_METHOD="${INSTALL_METHOD:-docker}"
-INSTALL_DIR="${INSTALL_DIR:-${HOME}/decypharr-torbox}"
-MOUNT_DIR="${MOUNT_DIR:-${INSTALL_DIR}/mount}"
 IMAGE="${DECYPHARR_IMAGE:-cy01/blackhole:latest}"
+APP_ID="${APP_ID:-decypharr}"
+CASAOS_MODE="${CASAOS_MODE:-auto}"
+IS_CASAOS=false
+INSTALL_DIR=""
+MOUNT_DIR=""
+DOWNLOADS_DIR=""
 PUID="${PUID:-$(id -u)}"
 PGID="${PGID:-$(id -g)}"
+TZ_VALUE="${TZ:-$(cat /etc/timezone 2>/dev/null || echo UTC)}"
 
 log() { printf '\033[0;36m[INFO]\033[0m %s\n' "$*"; }
 warn() { printf '\033[0;33m[WARN]\033[0m %s\n' "$*"; }
@@ -22,9 +27,13 @@ err() { printf '\033[0;31m[ERROR]\033[0m %s\n' "$*" >&2; }
 usage() {
   cat <<EOF
 Decypharr + Rclone installer for TorBox v${VERSION}
+Ubuntu and CasaOS supported.
 
 One-liner:
   curl -fsSL https://raw.githubusercontent.com/sirrobot01/decypharr/main/scripts/install-torbox.sh | bash
+
+CasaOS one-liner (auto-detected on /DATA systems):
+  curl -fsSL https://raw.githubusercontent.com/sirrobot01/decypharr/main/scripts/install-torbox.sh | TORBOX_API_KEY="your-key" bash
 
 With your TorBox API key:
   curl -fsSL https://raw.githubusercontent.com/sirrobot01/decypharr/main/scripts/install-torbox.sh | TORBOX_API_KEY="your-key" bash
@@ -34,11 +43,13 @@ Unattended:
 
 Environment variables:
   TORBOX_API_KEY       TorBox API key from https://torbox.app/settings
-  INSTALL_DIR          Install directory (default: ~/decypharr-torbox)
-  MOUNT_DIR            Host mount path for rclone (default: \$INSTALL_DIR/mount)
+  CASAOS_MODE          auto (default), on, or off
+  INSTALL_DIR          Install directory (auto on CasaOS: /DATA/AppData/decypharr)
+  MOUNT_DIR            Host mount path for rclone
+  DOWNLOADS_DIR        Symlink/download folder on the host
   DECYPHARR_IMAGE      Docker image (default: cy01/blackhole:latest)
   INSTALL_METHOD       docker (default) or binary
-  PUID / PGID          File ownership inside the container
+  PUID / PGID          File ownership (default: current user, usually 1000 on CasaOS)
 
 Options:
   -y, --yes            Non-interactive mode
@@ -69,6 +80,41 @@ run_root() {
   else
     err "Root privileges required for: $*"
     exit 1
+  fi
+}
+
+detect_casaos() {
+  case "$CASAOS_MODE" in
+    on|true|1|yes)
+      IS_CASAOS=true
+      return 0
+      ;;
+    off|false|0|no)
+      IS_CASAOS=false
+      return 0
+      ;;
+  esac
+
+  if [[ -d /DATA ]] && { [[ -x /usr/bin/casaos ]] || [[ -d /var/lib/casaos ]] || systemctl is-active casaos >/dev/null 2>&1; }; then
+    IS_CASAOS=true
+    return 0
+  fi
+
+  IS_CASAOS=false
+}
+
+configure_paths() {
+  if [[ "$IS_CASAOS" == true ]]; then
+    INSTALL_DIR="${INSTALL_DIR:-/DATA/AppData/${APP_ID}}"
+    MOUNT_DIR="${MOUNT_DIR:-${INSTALL_DIR}/mount}"
+    DOWNLOADS_DIR="${DOWNLOADS_DIR:-/DATA/Downloads/${APP_ID}}"
+    PUID="${PUID:-1000}"
+    PGID="${PGID:-1000}"
+    log "CasaOS detected. Using ${INSTALL_DIR}"
+  else
+    INSTALL_DIR="${INSTALL_DIR:-${HOME}/decypharr-torbox}"
+    MOUNT_DIR="${MOUNT_DIR:-${INSTALL_DIR}/mount}"
+    DOWNLOADS_DIR="${DOWNLOADS_DIR:-${INSTALL_DIR}/downloads}"
   fi
 }
 
@@ -114,10 +160,13 @@ install_host_deps() {
   fi
 
   if command -v apt-get >/dev/null 2>&1; then
-    if ! dpkg -s fuse3 >/dev/null 2>&1 && ! dpkg -s libfuse2 >/dev/null 2>&1; then
-      log "Installing FUSE packages..."
+    local missing=()
+    dpkg -s fuse3 >/dev/null 2>&1 || missing+=(fuse3)
+    dpkg -s libfuse2 >/dev/null 2>&1 || missing+=(libfuse2)
+    if ((${#missing[@]} > 0)); then
+      log "Installing Ubuntu packages: ${missing[*]} libfuse2 curl ca-certificates"
       run_root apt-get update -qq
-      run_root apt-get install -y fuse3 libfuse2 curl ca-certificates
+      run_root apt-get install -y "${missing[@]}" libfuse2 curl ca-certificates
     fi
   elif command -v apk >/dev/null 2>&1; then
     run_root apk add --no-cache fuse3 curl ca-certificates 2>/dev/null || true
@@ -162,9 +211,16 @@ verify_torbox_key() {
   esac
 }
 
-setup_mount_propagation() {
-  mkdir -p "$MOUNT_DIR"
+prepare_directories() {
+  mkdir -p \
+    "${INSTALL_DIR}/config/cache/rclone" \
+    "${MOUNT_DIR}" \
+    "${DOWNLOADS_DIR}"
 
+  run_root chown -R "${PUID}:${PGID}" "${INSTALL_DIR}" "${DOWNLOADS_DIR}" 2>/dev/null || true
+}
+
+setup_mount_propagation() {
   if findmnt -n "$MOUNT_DIR" >/dev/null 2>&1; then
     log "Mount propagation already configured at ${MOUNT_DIR}"
     return 0
@@ -173,6 +229,118 @@ setup_mount_propagation() {
   log "Configuring FUSE mount propagation at ${MOUNT_DIR}..."
   run_root mount --bind "$MOUNT_DIR" "$MOUNT_DIR"
   run_root mount --make-shared "$MOUNT_DIR"
+}
+
+install_mount_systemd() {
+  local service_file="/etc/systemd/system/decypharr-mount.service"
+  local escaped_mount
+  escaped_mount=$(printf '%s' "$MOUNT_DIR" | sed 's/[\\&|]/\\&/g')
+
+  run_root tee "$service_file" >/dev/null <<EOF
+[Unit]
+Description=Decypharr mount propagation for rclone
+After=local-fs.target
+Before=docker.service casaos.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash -c 'mkdir -p ${escaped_mount} && (findmnt -n ${escaped_mount} >/dev/null 2>&1 || (mount --bind ${escaped_mount} ${escaped_mount} && mount --make-shared ${escaped_mount}))'
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  run_root systemctl daemon-reload
+  run_root systemctl enable decypharr-mount.service >/dev/null 2>&1 || true
+  run_root systemctl start decypharr-mount.service >/dev/null 2>&1 || true
+  log "Installed systemd unit decypharr-mount.service for reboot persistence."
+}
+
+write_casaos_compose() {
+  cat >"${INSTALL_DIR}/docker-compose.yml" <<EOF
+name: ${APP_ID}
+services:
+  decypharr:
+    image: ${IMAGE}
+    container_name: decypharr
+    restart: unless-stopped
+    network_mode: bridge
+    environment:
+      PUID: \$PUID
+      PGID: \$PGID
+      TZ: \$TZ
+    ports:
+      - target: 8282
+        published: "8282"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: ${INSTALL_DIR}/config
+        target: /app
+      - type: bind
+        source: ${MOUNT_DIR}
+        target: /mnt/decypharr
+        bind:
+          propagation: rshared
+      - type: bind
+        source: ${DOWNLOADS_DIR}
+        target: /data/downloads
+    devices:
+      - /dev/fuse:/dev/fuse:rwm
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    privileged: false
+    x-casaos:
+      envs:
+        - container: TZ
+          description:
+            en_us: TimeZone
+        - container: PUID
+          description:
+            en_us: User ID for file permissions
+        - container: PGID
+          description:
+            en_us: Group ID for file permissions
+      ports:
+        - container: "8282"
+          description:
+            en_us: Decypharr Web UI and qBittorrent API
+      volumes:
+        - container: /app
+          description:
+            en_us: Decypharr configuration and cache
+        - container: /mnt/decypharr
+          description:
+            en_us: TorBox rclone mount root
+        - container: /data/downloads
+          description:
+            en_us: Symlink folder for Sonarr and Radarr
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: decypharr
+  author: Decypharr
+  category: Cloud
+  title:
+    en_us: Decypharr
+  description:
+    en_us: |
+      Decypharr connects Sonarr, Radarr, and other *arr apps to TorBox.
+      It emulates qBittorrent, mounts TorBox via embedded rclone, and creates symlinks to cloud files.
+  icon: https://raw.githubusercontent.com/sirrobot01/decypharr/main/docs/public/favicon.png
+  port_map: "8282"
+  scheme: http
+  index: /
+  hostname: ""
+  pre-install-cmd: |
+    mkdir -p ${INSTALL_DIR}/config/cache/rclone ${MOUNT_DIR} ${DOWNLOADS_DIR} &&
+    findmnt -n ${MOUNT_DIR} >/dev/null 2>&1 || (mount --bind ${MOUNT_DIR} ${MOUNT_DIR} && mount --make-shared ${MOUNT_DIR}) &&
+    chown -R \$PUID:\$PGID ${INSTALL_DIR} ${DOWNLOADS_DIR}
+EOF
 }
 
 write_docker_compose() {
@@ -187,11 +355,11 @@ services:
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
-      - TZ=${TZ:-UTC}
+      - TZ=${TZ_VALUE}
     volumes:
-      - ./config:/app
+      - ${INSTALL_DIR}/config:/app
       - ${MOUNT_DIR}:/mnt/decypharr:rshared
-      - ./downloads:/data/downloads
+      - ${DOWNLOADS_DIR}:/data/downloads
     devices:
       - /dev/fuse:/dev/fuse:rwm
     cap_add:
@@ -203,7 +371,6 @@ EOF
 
 write_config() {
   local config_dir="${INSTALL_DIR}/config"
-  mkdir -p "${config_dir}/cache/rclone" "${INSTALL_DIR}/downloads"
 
   if [[ -f "${config_dir}/config.json" ]]; then
     log "Existing config found at ${config_dir}/config.json (leaving untouched)."
@@ -242,23 +409,31 @@ write_config() {
       "vfs_read_chunk_size": "128MB",
       "vfs_read_ahead": "256MB",
       "buffer_size": "16MB",
-      "transfers": 4
+      "transfers": 4,
+      "uid": ${PUID},
+      "gid": ${PGID}
     }
   }
 }
 EOF
   chmod 600 "${config_dir}/config.json"
+  run_root chown "${PUID}:${PGID}" "${config_dir}/config.json" 2>/dev/null || true
   log "Wrote TorBox-ready config with embedded rclone mounting."
 }
 
 install_docker() {
   ensure_docker
   install_host_deps
-
-  log "Creating install directory at ${INSTALL_DIR}"
-  mkdir -p "$INSTALL_DIR"
+  prepare_directories
   setup_mount_propagation
-  write_docker_compose
+
+  if [[ "$IS_CASAOS" == true ]]; then
+    write_casaos_compose
+    install_mount_systemd
+  else
+    write_docker_compose
+  fi
+
   write_config
 
   log "Pulling ${IMAGE}..."
@@ -267,12 +442,21 @@ install_docker() {
   log "Starting Decypharr..."
   (
     cd "$INSTALL_DIR"
-    "${COMPOSE[@]}" up -d
+    if [[ "$IS_CASAOS" == true ]]; then
+      PUID="$PUID" PGID="$PGID" TZ="$TZ_VALUE" "${COMPOSE[@]}" up -d
+    else
+      "${COMPOSE[@]}" up -d
+    fi
   )
 
   log "Decypharr is running at http://localhost:8282"
   log "Rclone is bundled in the container and mounts TorBox at /mnt/decypharr/torbox"
-  log "Point Sonarr/Radarr download client to host:8282 (qBittorrent-compatible)"
+  if [[ "$IS_CASAOS" == true ]]; then
+    log "CasaOS: point Sonarr/Radarr download client to <your-server-ip>:8282"
+    log "CasaOS compose file: ${INSTALL_DIR}/docker-compose.yml"
+  else
+    log "Point Sonarr/Radarr download client to host:8282 (qBittorrent-compatible)"
+  fi
 }
 
 detect_arch() {
@@ -288,6 +472,12 @@ install_binary() {
   arch=$(detect_arch)
   need_cmd curl
   install_host_deps
+  prepare_directories
+  setup_mount_propagation
+
+  if [[ "$IS_CASAOS" == true ]]; then
+    install_mount_systemd
+  fi
 
   log "Installing rclone..."
   if ! command -v rclone >/dev/null 2>&1; then
@@ -304,7 +494,6 @@ install_binary() {
   run_root install -m 0755 "${tmpdir}/decypharr" /usr/local/bin/decypharr
   rm -rf "$tmpdir"
 
-  mkdir -p "${INSTALL_DIR}/config" "${INSTALL_DIR}/downloads" "$MOUNT_DIR" "${INSTALL_DIR}/cache/rclone"
   export DECYPHARR_CONFIG="${INSTALL_DIR}/config"
   write_config
 
@@ -319,7 +508,14 @@ install_binary() {
 }
 
 main() {
+  detect_casaos
+  configure_paths
+
   log "Decypharr + Rclone installer for TorBox v${VERSION}"
+  if [[ "$IS_CASAOS" == true ]]; then
+    log "Target platform: CasaOS on Ubuntu"
+  fi
+
   prompt_torbox_key
   verify_torbox_key
 
@@ -339,15 +535,31 @@ Done.
 Useful paths:
   Install dir:  ${INSTALL_DIR}
   Mount dir:    ${MOUNT_DIR}
-  Downloads:    ${INSTALL_DIR}/downloads
+  Downloads:    ${DOWNLOADS_DIR}
   Web UI:       http://localhost:8282
 
 TorBox mount path inside Decypharr:
   /mnt/decypharr/torbox/__all__
 
-Re-run this installer later with:
+EOF
+
+  if [[ "$IS_CASAOS" == true ]]; then
+    cat <<EOF
+CasaOS notes:
+  - App data lives under ${INSTALL_DIR}
+  - Symlinks are written to ${DOWNLOADS_DIR}
+  - In Sonarr/Radarr, set the qBittorrent host to your CasaOS server IP on port 8282
+  - You can also import ${INSTALL_DIR}/docker-compose.yml via App Store -> Custom Install
+
+Re-run:
   curl -fsSL https://raw.githubusercontent.com/sirrobot01/decypharr/main/scripts/install-torbox.sh | TORBOX_API_KEY="your-key" bash
 EOF
+  else
+    cat <<EOF
+Re-run:
+  curl -fsSL https://raw.githubusercontent.com/sirrobot01/decypharr/main/scripts/install-torbox.sh | TORBOX_API_KEY="your-key" bash
+EOF
+  fi
 }
 
 main "$@"
