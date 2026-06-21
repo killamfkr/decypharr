@@ -1,67 +1,57 @@
 # Decypharr on ZimaOS
 
-## Install
+## The rclone 400 error (`parsing "10G"`)
 
-1. Create folders: `sudo mkdir -p /DATA/AppData/decypharr/{config,mount,cache}`
-2. ZimaOS → **+** → **Install a customized app** → paste [`docker-compose.yml`](docker-compose.yml)
-3. Set **`TORBOX_API_KEY`** in Environment
-4. Start the app
+The `cy01/blackhole:latest` image passes size strings like `16MB` / `10GB` to rclone, which fails. It also re-adds those values when `TORBOX_API_KEY` is in the container environment.
 
-## Where files appear
+**Fix: use a minimal config and do NOT leave `TORBOX_API_KEY` in the app environment.**
 
-The rclone mount is at **`/mnt`** inside the container. On the host that is:
+## Quick fix (SSH)
 
+```bash
+# 1. Write a minimal config (replace YOUR_KEY)
+TORBOX_API_KEY=YOUR_KEY sh -c 'curl -fsSL https://raw.githubusercontent.com/killamfkr/decypharr/cursor/zimaos-torbox-rclone-edec/deploy/zimaos/install-config.sh | sh'
+
+# 2. In ZimaOS app settings, REMOVE these environment variables if present:
+#    TORBOX_API_KEY
+#    SETUP_TORBOX_API_KEY
+
+# 3. Restart decypharr
+docker restart decypharr
+
+# 4. Verify
+docker exec decypharr cat /app/config.json
+docker exec decypharr ls -la /mnt
 ```
-/DATA/AppData/decypharr/mount/
+
+`config.json` must look like this (no `buffer_size`, no `vfs_cache_max_size`, `mount_path` is `/mnt`):
+
+```json
+"mount": {
+  "type": "rclone",
+  "mount_path": "/mnt",
+  "rclone": {
+    "cache_dir": "/cache/rclone",
+    "vfs_cache_mode": "off",
+    "transfers": 4
+  }
+}
 ```
 
-You should see folders like:
+## ZimaOS compose install
 
-```
-__all__/     ← completed downloads (via Sonarr/Radarr)
-__bad__/     ← failed imports
-torrents/    ← active torrents
-torbox/      ← Torbox provider folder
-```
+1. Paste [`docker-compose.yml`](docker-compose.yml)
+2. Set **`SETUP_TORBOX_API_KEY`** only (not `TORBOX_API_KEY`) in Environment
+3. Start the app, then **remove `SETUP_TORBOX_API_KEY`** from Environment and restart again
 
-**`__all__` is only populated after you add torrents** through Decypharr (Sonarr/Radarr qBittorrent client). An empty `__all__` with the other folders visible means the mount is working.
+The startup script writes config once, then runs decypharr without the API key env var so sizes are not re-injected.
 
-## Mount looks empty?
+## After mount works
 
-### 1. Check inside the container (not just the host folder)
+Files appear under `/mnt/__all__/` after you add torrents via Sonarr/Radarr or the Decypharr UI.
 
 ```bash
 docker exec decypharr ls -la /mnt
 ```
 
-If folders show here but not on the host, ZimaOS stripped `rshared` propagation. Re-deploy via SSH:
-
-```bash
-cd /tmp
-curl -fsSLO https://raw.githubusercontent.com/killamfkr/decypharr/cursor/zimaos-torbox-rclone-edec/deploy/zimaos/docker-compose.yml
-# set TORBOX_API_KEY, then:
-sudo docker compose up -d
-```
-
-### 2. Fix broken config and restart
-
-```bash
-sudo rm -f /DATA/AppData/decypharr/config/config.json
-```
-
-Restart the container (with `TORBOX_API_KEY` set). The compose file rewrites a working config.
-
-### 3. Check rclone logs
-
-```bash
-docker exec decypharr cat /app/logs/rclone.log | tail -30
-```
-
-### 4. Add a test torrent
-
-In Decypharr UI, add a magnet/torrent or send one from Sonarr. Files appear under `/mnt/__all__/`.
-
-## Sonarr / Radarr
-
-- Download client: **qBittorrent**, port **8282**
-- Mount into *Arr containers: `/DATA/AppData/decypharr/mount:/mnt:ro`
+Expected: `__all__`, `__bad__`, `torrents`, `torbox`
