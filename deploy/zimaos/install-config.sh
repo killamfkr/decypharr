@@ -16,6 +16,20 @@ cat > "$CONFIG_DIR/config.json" <<EOF
   "use_auth": false,
   "download_folder": "/app/downloads",
   "categories": ["sonarr", "radarr"],
+  "custom_folders": {
+    "Movies": {
+      "filters": {
+        "not_regex": "(?i)(S\\d{1,4}E\\d{1,4}|Season[\\s._-]?\\d+)",
+        "not_files_regex": "(?i)(S\\d{1,4}E\\d{1,4}|Season[\\s._-]?\\d+)"
+      }
+    },
+    "Series": {
+      "filters": {
+        "regex": "(?i)(S\\d{1,4}E\\d{1,4}|Season[\\s._-]?\\d+)",
+        "files_regex": "(?i)(S\\d{1,4}E\\d{1,4}|Season[\\s._-]?\\d+)"
+      }
+    }
+  },
   "debrids": [
     {
       "provider": "torbox",

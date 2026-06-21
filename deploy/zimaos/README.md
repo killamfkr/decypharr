@@ -125,6 +125,48 @@ Decypharr also needs the downloads folder:
 
 Set `"download_folder": "/app/downloads"` in `config.json`.
 
+## Virtual folders (Movies / Series)
+
+Optional browse-only folders on the mount (`/mnt/Movies`, `/mnt/Series`). They do **not** replace `downloads/radarr` or `downloads/sonarr` for Radarr/Sonarr imports.
+
+Add to `config.json` and restart Decypharr:
+
+```json
+"custom_folders": {
+  "Movies": {
+    "filters": {
+      "not_regex": "(?i)(S\\d{1,4}E\\d{1,4}|Season[\\s._-]?\\d+)",
+      "not_files_regex": "(?i)(S\\d{1,4}E\\d{1,4}|Season[\\s._-]?\\d+)"
+    }
+  },
+  "Series": {
+    "filters": {
+      "regex": "(?i)(S\\d{1,4}E\\d{1,4}|Season[\\s._-]?\\d+)",
+      "files_regex": "(?i)(S\\d{1,4}E\\d{1,4}|Season[\\s._-]?\\d+)"
+    }
+  }
+}
+```
+
+Works on the current image: **Movies** hides releases with `S01E01` / `Season 1` patterns; **Series** shows them.
+
+If you run a build with the `category` filter (this repo's PR), you can use the simpler Sonarr/Radarr mapping instead:
+
+```json
+"custom_folders": {
+  "Movies": { "filters": { "category": "radarr" } },
+  "Series": { "filters": { "category": "sonarr" } }
+}
+```
+
+After restart, browse:
+
+```text
+/mnt/Movies/
+/mnt/Series/
+/mnt/__all__/    # everything still here too
+```
+
 ### How imports work (important)
 
 Decypharr does **not** copy the movie into `downloads/`. The flow is:
