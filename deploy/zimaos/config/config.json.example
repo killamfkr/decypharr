@@ -1,5 +1,4 @@
 {
-  "bind_address": "0.0.0.0",
   "port": "8282",
   "log_level": "info",
   "use_auth": false,
@@ -17,7 +16,7 @@
   ],
   "mount": {
     "type": "rclone",
-    "mount_path": "/mnt/decypharr",
+    "mount_path": "/mnt",
     "rclone": {
       "cache_dir": "/cache/rclone",
       "vfs_cache_mode": "writes",

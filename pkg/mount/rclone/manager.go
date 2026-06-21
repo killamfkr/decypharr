@@ -79,9 +79,11 @@ func NewManager(manager *manager.Manager) *Manager {
 		_logger.Error().Err(err).Msg("Failed to create rclone config directory")
 	}
 
+	// Rclone connects to the local WebDAV server from inside the container.
+	// bind_address 0.0.0.0 is valid for listening but not for HTTP clients.
 	bindAddress := mainCfg.BindAddress
-	if bindAddress == "" {
-		bindAddress = "localhost"
+	if bindAddress == "" || bindAddress == "0.0.0.0" || bindAddress == "::" {
+		bindAddress = "127.0.0.1"
 	}
 
 	baseUrl := fmt.Sprintf("http://%s:%s", bindAddress, mainCfg.Port)

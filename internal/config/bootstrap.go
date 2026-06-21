@@ -7,7 +7,7 @@ import (
 
 const (
 	defaultTorboxProvider = "torbox"
-	defaultMountPath      = "/mnt/decypharr"
+	defaultMountPath      = "/mnt"
 	defaultCacheDir       = "/cache/rclone"
 	defaultDownloadFolder = "/app/downloads"
 )

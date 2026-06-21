@@ -1,18 +1,26 @@
 #!/bin/sh
 set -e
 
-mkdir -p /app/logs /app/cache /app/downloads /app/rclone /mnt/decypharr /cache/rclone
+mkdir -p /app/logs /app/cache /app/downloads /app/rclone /mnt /cache/rclone
 
 write_config() {
     printf '%s' \
-        '{"bind_address":"0.0.0.0","port":"8282","log_level":"info","use_auth":false,' \
+        '{"port":"8282","log_level":"info","use_auth":false,' \
         '"download_folder":"/app/downloads","categories":["sonarr","radarr"],' \
         '"debrids":[{"provider":"torbox","name":"torbox","api_key":"' \
         "$TORBOX_API_KEY" \
-        '"}],"mount":{"type":"rclone","mount_path":"/mnt/decypharr","rclone":{' \
+        '"}],"mount":{"type":"rclone","mount_path":"/mnt","rclone":{' \
         '"cache_dir":"/cache/rclone","vfs_cache_mode":"writes","vfs_cache_max_size":"10GB",' \
         '"vfs_read_chunk_size":"128MB","vfs_read_ahead":"256MB","buffer_size":"16MB","transfers":4}}}' \
         > /app/config.json
+}
+
+fix_config() {
+    if [ ! -f /app/config.json ]; then
+        return 0
+    fi
+    sed -i 's/"bind_address"[[:space:]]*:[[:space:]]*"0\.0\.0\.0"/"bind_address": ""/g' /app/config.json 2>/dev/null || true
+    sed -i 's|"mount_path"[[:space:]]*:[[:space:]]*"/mnt/decypharr"|"mount_path": "/mnt"|g' /app/config.json 2>/dev/null || true
 }
 
 if [ -n "$TORBOX_API_KEY" ]; then
@@ -22,6 +30,8 @@ if [ -n "$TORBOX_API_KEY" ]; then
         write_config
     elif ! grep -q '"download_folder"' /app/config.json 2>/dev/null; then
         write_config
+    else
+        fix_config
     fi
 fi
 

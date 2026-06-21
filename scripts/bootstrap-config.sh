@@ -25,7 +25,7 @@ bootstrap_torbox_config() {
   ],
   "mount": {
     "type": "rclone",
-    "mount_path": "/mnt/decypharr",
+    "mount_path": "/mnt",
     "rclone": {
       "cache_dir": "/cache/rclone",
       "vfs_cache_mode": "writes",

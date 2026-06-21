@@ -2,39 +2,66 @@
 
 ## Install
 
-1. Create folders on ZimaOS (SSH):
-   ```bash
-   sudo mkdir -p /DATA/AppData/decypharr/{config,mount,cache}
-   ```
-2. ZimaOS → **+** → **Install a customized app** → **Docker Compose**
-3. Paste [`docker-compose.yml`](docker-compose.yml)
-4. Set **`TORBOX_API_KEY`** in the app's **Environment** settings to your [Torbox API key](https://torbox.app/settings)
-5. Start the app
+1. Create folders: `sudo mkdir -p /DATA/AppData/decypharr/{config,mount,cache}`
+2. ZimaOS → **+** → **Install a customized app** → paste [`docker-compose.yml`](docker-compose.yml)
+3. Set **`TORBOX_API_KEY`** in Environment
+4. Start the app
 
-Open `http://<your-zimaos-ip>:8282` — you should go straight to the dashboard, not the setup wizard.
+## Where files appear
 
-## Already installed and stuck on setup wizard?
+The rclone mount is at **`/mnt`** inside the container. On the host that is:
 
-Your old install created an empty `config.json`. Fix it:
+```
+/DATA/AppData/decypharr/mount/
+```
 
-1. Set `TORBOX_API_KEY` in the ZimaOS app environment (if not already)
-2. Delete the old config and restart:
-   ```bash
-   sudo rm -f /DATA/AppData/decypharr/config/config.json
-   ```
-3. Restart the Decypharr container in ZimaOS
+You should see folders like:
 
-The compose file auto-writes a complete config on start when `TORBOX_API_KEY` is set.
+```
+__all__/     ← completed downloads (via Sonarr/Radarr)
+__bad__/     ← failed imports
+torrents/    ← active torrents
+torbox/      ← Torbox provider folder
+```
 
-## If the app fails to start
+**`__all__` is only populated after you add torrents** through Decypharr (Sonarr/Radarr qBittorrent client). An empty `__all__` with the other folders visible means the mount is working.
 
-Try [`docker-compose.fallback.yml`](docker-compose.fallback.yml) (simpler volumes).
+## Mount looks empty?
+
+### 1. Check inside the container (not just the host folder)
+
+```bash
+docker exec decypharr ls -la /mnt
+```
+
+If folders show here but not on the host, ZimaOS stripped `rshared` propagation. Re-deploy via SSH:
+
+```bash
+cd /tmp
+curl -fsSLO https://raw.githubusercontent.com/killamfkr/decypharr/cursor/zimaos-torbox-rclone-edec/deploy/zimaos/docker-compose.yml
+# set TORBOX_API_KEY, then:
+sudo docker compose up -d
+```
+
+### 2. Fix broken config and restart
+
+```bash
+sudo rm -f /DATA/AppData/decypharr/config/config.json
+```
+
+Restart the container (with `TORBOX_API_KEY` set). The compose file rewrites a working config.
+
+### 3. Check rclone logs
+
+```bash
+docker exec decypharr cat /app/logs/rclone.log | tail -30
+```
+
+### 4. Add a test torrent
+
+In Decypharr UI, add a magnet/torrent or send one from Sonarr. Files appear under `/mnt/__all__/`.
 
 ## Sonarr / Radarr
 
-Add Decypharr as **qBittorrent** on port `8282`. Mount into *Arr containers:
-
-```yaml
-volumes:
-  - /DATA/AppData/decypharr/mount:/mnt:ro
-```
+- Download client: **qBittorrent**, port **8282**
+- Mount into *Arr containers: `/DATA/AppData/decypharr/mount:/mnt:ro`

@@ -16,7 +16,7 @@ umask "$UMASK"
 setup_directories() {
     # Ensure directories exist
     mkdir -p /app/logs /app/cache /app/downloads /app/rclone 2>/dev/null || true
-    mkdir -p /mnt/decypharr /cache/rclone 2>/dev/null || true
+    mkdir -p /mnt /cache/rclone 2>/dev/null || true
 
     bootstrap_torbox_config 2>/dev/null || true
 
@@ -59,7 +59,7 @@ GROUPNAME=$(getent group "$PGID" | cut -d: -f1)
 
 # Create directories and set proper ownership
 mkdir -p /app/logs /app/cache /app/downloads /app/rclone
-mkdir -p /mnt/decypharr /cache/rclone
+mkdir -p /mnt /cache/rclone
 bootstrap_torbox_config
 chown -R "$PUID:$PGID" /app
 chmod 755 /app
