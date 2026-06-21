@@ -9,11 +9,16 @@ UMASK=${UMASK:-022}
 # Set umask
 umask "$UMASK"
 
+# shellcheck source=/dev/null
+. /bootstrap-config.sh 2>/dev/null || true
+
 # Function to create directories and files
 setup_directories() {
     # Ensure directories exist
     mkdir -p /app/logs /app/cache /app/downloads /app/rclone 2>/dev/null || true
     mkdir -p /mnt/decypharr /cache/rclone 2>/dev/null || true
+
+    bootstrap_torbox_config 2>/dev/null || true
 
     # Create log file if it doesn't exist
     touch /app/logs/decypharr.log 2>/dev/null || true
@@ -55,6 +60,7 @@ GROUPNAME=$(getent group "$PGID" | cut -d: -f1)
 # Create directories and set proper ownership
 mkdir -p /app/logs /app/cache /app/downloads /app/rclone
 mkdir -p /mnt/decypharr /cache/rclone
+bootstrap_torbox_config
 chown -R "$PUID:$PGID" /app
 chmod 755 /app
 touch /app/logs/decypharr.log

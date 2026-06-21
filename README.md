@@ -55,7 +55,7 @@ For complete documentation, please visit our [Documentation](https://docs.decyph
 
 ### ZimaOS (Torbox + Rclone)
 
-A turnkey ZimaOS deployment is available in [`deploy/zimaos/`](deploy/zimaos/). Copy the compose file, set `TORBOX_API_KEY` in `.env`, and start the container — rclone mounting is pre-configured.
+Copy [`deploy/zimaos/docker-compose.yml`](deploy/zimaos/docker-compose.yml) into ZimaOS custom app installer, set your `TORBOX_API_KEY`, and start — no other setup required.
 
 ## Contributing
 

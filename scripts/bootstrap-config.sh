@@ -1,0 +1,44 @@
+#!/bin/sh
+# Write a turnkey Torbox + rclone config when TORBOX_API_KEY is set.
+bootstrap_torbox_config() {
+    if [ -z "$TORBOX_API_KEY" ]; then
+        return 0
+    fi
+
+    if [ -f /app/config.json ] && grep -q '"api_key"[[:space:]]*:[[:space:]]*"[^"]' /app/config.json 2>/dev/null; then
+        return 0
+    fi
+
+    echo "Creating Decypharr config for Torbox + rclone..."
+
+  cat > /app/config.json <<EOF
+{
+  "bind_address": "0.0.0.0",
+  "port": "8282",
+  "log_level": "info",
+  "use_auth": false,
+  "download_folder": "/app/downloads",
+  "categories": ["sonarr", "radarr"],
+  "debrids": [
+    {
+      "provider": "torbox",
+      "name": "torbox",
+      "api_key": "${TORBOX_API_KEY}"
+    }
+  ],
+  "mount": {
+    "type": "rclone",
+    "mount_path": "/mnt/decypharr",
+    "rclone": {
+      "cache_dir": "/cache/rclone",
+      "vfs_cache_mode": "writes",
+      "vfs_cache_max_size": "10GB",
+      "vfs_read_chunk_size": "128MB",
+      "vfs_read_ahead": "256MB",
+      "buffer_size": "16MB",
+      "transfers": 4
+    }
+  }
+}
+EOF
+}
