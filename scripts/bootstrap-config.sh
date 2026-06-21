@@ -10,7 +10,6 @@ bootstrap_torbox_config() {
 
         cat > /app/config.json <<EOF
 {
-  "bind_address": "0.0.0.0",
   "port": "8282",
   "log_level": "info",
   "use_auth": false,
