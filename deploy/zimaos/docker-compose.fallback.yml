@@ -22,8 +22,6 @@ services:
       - type: bind
         source: /DATA/AppData/decypharr/mount
         target: /mnt
-        bind:
-          propagation: rshared
       - type: bind
         source: /DATA/AppData/decypharr/cache
         target: /cache

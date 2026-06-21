@@ -1,41 +1,55 @@
 # Decypharr on ZimaOS
 
-Copy-paste install. No SSH, no curl, no manual config files.
-
 ## Install
 
-1. Open ZimaOS → **+** → **Install a customized app**
-2. Go to the **Docker Compose** tab
-3. Paste the contents of [`docker-compose.yml`](docker-compose.yml)
-4. Replace `PASTE_YOUR_TORBOX_API_KEY_HERE` with your [Torbox API key](https://torbox.app/settings)
-5. If your storage is not under `/DATA`, update the three volume paths in the compose file
-6. Click **Submit** and start the app
+1. ZimaOS → **+** → **Install a customized app** → **Docker Compose**
+2. Paste [`docker-compose.yml`](docker-compose.yml)
+3. In the **Environment** section, set `TORBOX_API_KEY` to your [Torbox API key](https://torbox.app/settings)
+4. Create the three host folders if ZimaOS does not create them automatically:
+   - `/DATA/AppData/decypharr/config`
+   - `/DATA/AppData/decypharr/mount`
+   - `/DATA/AppData/decypharr/cache`
+5. Submit and start the app
 
-Open `http://<your-zimaos-ip>:8282` when the container is running.
+Open `http://<your-zimaos-ip>:8282`
 
-## What you get
+## If the app fails to start
 
-- Torbox debrid
-- Embedded rclone mount at `/mnt/decypharr`
-- FUSE permissions pre-configured (`/dev/fuse`, `SYS_ADMIN`, `rshared`)
+### 1. Set TORBOX_API_KEY in the ZimaOS UI
 
-The compose file creates `config.json` automatically on first start. You only edit the API key in the compose file.
+Do not leave `TORBOX_API_KEY` empty. Set it in the app's **Environment** settings after install, not only in the YAML.
+
+### 2. Create the host folders first
+
+```bash
+sudo mkdir -p /DATA/AppData/decypharr/config
+sudo mkdir -p /DATA/AppData/decypharr/mount
+sudo mkdir -p /DATA/AppData/decypharr/cache
+```
+
+### 3. Check container logs
+
+In ZimaOS, open the app → **Logs** (or run `docker logs decypharr` via SSH).
+
+### 4. Try the fallback compose (no rshared)
+
+If the standard compose still fails, use [`docker-compose.fallback.yml`](docker-compose.fallback.yml). It uses simpler volume syntax that the ZimaOS UI handles more reliably.
+
+### 5. Use SSH + docker compose (most reliable)
+
+```bash
+sudo mkdir -p /DATA/AppData/decypharr/{config,mount,cache}
+cd /tmp
+curl -fsSLO https://raw.githubusercontent.com/killamfkr/decypharr/cursor/zimaos-torbox-rclone-edec/deploy/zimaos/docker-compose.yml
+# Edit TORBOX_API_KEY in the file, then:
+sudo docker compose up -d
+```
 
 ## Sonarr / Radarr
 
-Add Decypharr as a **qBittorrent** download client on port `8282`.
-
-Mount this into your *Arr containers so they can see the files:
+Add Decypharr as **qBittorrent** on port `8282`. Mount into *Arr containers:
 
 ```yaml
 volumes:
   - /DATA/AppData/decypharr/mount:/mnt:ro
 ```
-
-## Troubleshooting
-
-**Container exits immediately** — you forgot to replace `PASTE_YOUR_TORBOX_API_KEY_HERE`.
-
-**Rclone mount fails** — confirm `/dev/fuse`, `SYS_ADMIN`, and `:rshared` on the `/mnt` volume are all present in the compose file.
-
-**Permission errors** — change `PUID`/`PGID` to match your media apps (usually `1000`).

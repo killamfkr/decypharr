@@ -90,6 +90,7 @@ COPY --from=builder /healthcheck /usr/bin/healthcheck
 COPY --from=ffprobe-extractor /ffprobe /usr/bin/ffprobe
 COPY scripts/bootstrap-config.sh /bootstrap-config.sh
 COPY scripts/entrypoint.sh /entrypoint.sh
+COPY deploy/zimaos/config/config.json.example /defaults/config.json
 RUN chmod +x /entrypoint.sh /bootstrap-config.sh
 
 # Set environment variables

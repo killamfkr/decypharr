@@ -1,17 +1,14 @@
 #!/bin/sh
 # Write a turnkey Torbox + rclone config when TORBOX_API_KEY is set.
 bootstrap_torbox_config() {
-    if [ -z "$TORBOX_API_KEY" ]; then
-        return 0
-    fi
-
     if [ -f /app/config.json ] && grep -q '"api_key"[[:space:]]*:[[:space:]]*"[^"]' /app/config.json 2>/dev/null; then
         return 0
     fi
 
-    echo "Creating Decypharr config for Torbox + rclone..."
+    if [ -n "$TORBOX_API_KEY" ]; then
+        echo "Creating Decypharr config for Torbox + rclone..."
 
-  cat > /app/config.json <<EOF
+        cat > /app/config.json <<EOF
 {
   "bind_address": "0.0.0.0",
   "port": "8282",
@@ -41,4 +38,11 @@ bootstrap_torbox_config() {
   }
 }
 EOF
+        return 0
+    fi
+
+    if [ -f /defaults/config.json ] && [ ! -f /app/config.json ]; then
+        echo "Copying default Decypharr config..."
+        cp /defaults/config.json /app/config.json
+    fi
 }
