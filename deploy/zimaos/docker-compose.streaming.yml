@@ -1,0 +1,48 @@
+name: decypharr
+services:
+  decypharr:
+    # Builds from GitHub (no manual git clone). First start takes several minutes.
+    # Requires Docker Compose v2 with Git build context support.
+    build:
+      context: https://github.com/killamfkr/decypharr.git#cursor/zimaos-torbox-rclone-edec
+      dockerfile: Dockerfile
+    image: decypharr:streaming
+    container_name: decypharr
+    network_mode: bridge
+    restart: unless-stopped
+    privileged: true
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - SETUP_TORBOX_API_KEY=
+    ports:
+      - target: 8282
+        published: "8282"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: /DATA/AppData/decypharr/config
+        target: /app
+      - type: bind
+        source: /DATA/AppData/decypharr/mount
+        target: /mnt
+        bind:
+          propagation: rshared
+      - type: bind
+        source: /DATA/AppData/decypharr/cache
+        target: /cache
+      - type: bind
+        source: /DATA/AppData/decypharr/downloads
+        target: /app/downloads
+    devices:
+      - /dev/fuse:/dev/fuse:rwm
+    cap_add:
+      - SYS_ADMIN
+    cap_drop: []
+    security_opt:
+      - apparmor:unconfined
+    command:
+      - /bin/sh
+      - -c
+      - mkdir -p /app/logs /app/cache /app/downloads /app/rclone /mnt /cache/rclone && if [ -n "$$SETUP_TORBOX_API_KEY" ]; then printf '%s' '{"port":"8282","log_level":"info","use_auth":false,"download_folder":"/app/downloads","skip_pre_cache":true,"categories":["sonarr","radarr"],"custom_folders":{"Movies":{"filters":{"not_regex":"(?i)(S\\d{1,4}E\\d{1,4}|Season[\\s._-]?\\d+)","not_files_regex":"(?i)(S\\d{1,4}E\\d{1,4}|Season[\\s._-]?\\d+)"}},"Series":{"filters":{"regex":"(?i)(S\\d{1,4}E\\d{1,4}|Season[\\s._-]?\\d+)","files_regex":"(?i)(S\\d{1,4}E\\d{1,4}|Season[\\s._-]?\\d+)"}}},"debrids":[{"provider":"torbox","name":"torbox","api_key":"' "$$SETUP_TORBOX_API_KEY" '"}],"mount":{"type":"rclone","mount_path":"/mnt","rclone":{"cache_dir":"/cache/rclone","vfs_cache_mode":"full","transfers":4}}}' > /app/config.json; fi && exec env -u TORBOX_API_KEY -u SETUP_TORBOX_API_KEY /usr/bin/decypharr --config /app

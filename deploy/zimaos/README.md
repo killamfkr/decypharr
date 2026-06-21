@@ -262,6 +262,37 @@ You need **both**:
 2. `vfs_cache_mode: full` with **no manual size fields** in config
 3. A large cache volume (`/DATA/AppData/decypharr/cache` → `/cache`, **30GB+ free**)
 
+### Option A: Compose builds the image (recommended)
+
+Use [`docker-compose.streaming.yml`](docker-compose.streaming.yml) in ZimaOS instead of the default compose. It **builds from GitHub** on first start and enables the streaming config:
+
+```bash
+# SSH on ZimaOS — or paste the compose file into the ZimaOS app UI
+curl -fsSL https://raw.githubusercontent.com/killamfkr/decypharr/cursor/zimaos-torbox-rclone-edec/deploy/zimaos/docker-compose.streaming.yml -o /tmp/decypharr-compose.yml
+```
+
+In ZimaOS: replace the decypharr app compose with that file, set **`SETUP_TORBOX_API_KEY`**, start the app.
+
+Or from SSH:
+
+```bash
+docker compose -f /tmp/decypharr-compose.yml up -d --build
+```
+
+First build takes several minutes (clones repo + compiles). Image is tagged `decypharr:streaming`.
+
+**If Git build fails in ZimaOS UI**, use Option B below.
+
+### Option B: Build locally, then use image in compose
+
+```bash
+git clone https://github.com/killamfkr/decypharr.git
+cd decypharr && git checkout cursor/zimaos-torbox-rclone-edec
+docker build -t decypharr:streaming .
+```
+
+Then change only the image line in your compose to `decypharr:streaming` and remove the `build:` block.
+
 **Config** — only change `vfs_cache_mode` (do not add `vfs_cache_max_size`, `buffer_size`, etc.):
 
 ```json
@@ -285,16 +316,7 @@ TORBOX_API_KEY=YOUR_KEY sh -c 'curl -fsSL https://raw.githubusercontent.com/kill
 docker restart decypharr
 ```
 
-**Build a fixed image on ZimaOS** (if no prebuilt image yet):
-
-```bash
-git clone https://github.com/killamfkr/decypharr.git
-cd decypharr
-git checkout cursor/zimaos-torbox-rclone-edec
-docker build -t decypharr:streaming .
-```
-
-In ZimaOS, change the decypharr app image to `decypharr:streaming` (or your registry tag), keep the same volumes, restart.
+Remove the manual build section if using Option A compose — the compose file handles it.
 
 Verify mount succeeds:
 
