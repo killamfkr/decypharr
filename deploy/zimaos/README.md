@@ -18,9 +18,13 @@ TORBOX_API_KEY=your_actual_api_key curl -fsSL \
 ```bash
 mkdir -p /DATA/AppData/decypharr/{config,mount,cache}
 
+# Download to /tmp first (avoids permission errors on /DATA)
 curl -fsSL \
   https://raw.githubusercontent.com/killamfkr/decypharr/cursor/zimaos-torbox-rclone-edec/deploy/zimaos/config/config.json.example \
-  -o /DATA/AppData/decypharr/config/config.json
+  -o /tmp/decypharr-config.json
+
+sudo cp /tmp/decypharr-config.json /DATA/AppData/decypharr/config/config.json
+sudo chmod 644 /DATA/AppData/decypharr/config/config.json
 ```
 
 Then edit `/DATA/AppData/decypharr/config/config.json` and paste your Torbox API key into the `"api_key"` field.

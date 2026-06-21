@@ -14,30 +14,45 @@ CONFIG_DIR="${BASE_DIR}/config"
 MOUNT_DIR="${BASE_DIR}/mount"
 CACHE_DIR="${BASE_DIR}/cache"
 CONFIG_FILE="${CONFIG_DIR}/config.json"
+TMP_CONFIG="/tmp/decypharr-config.json"
+
+run_root() {
+  if [ "$(id -u)" -eq 0 ]; then
+    "$@"
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo "$@"
+  else
+    echo "Error: need root permissions to create ${BASE_DIR}" >&2
+    echo "Run: sudo mkdir -p ${CONFIG_DIR} ${MOUNT_DIR} ${CACHE_DIR}" >&2
+    exit 1
+  fi
+}
 
 echo "Decypharr ZimaOS installer"
 echo "Base directory: ${BASE_DIR}"
 
-mkdir -p "${CONFIG_DIR}" "${MOUNT_DIR}" "${CACHE_DIR}"
+run_root mkdir -p "${CONFIG_DIR}" "${MOUNT_DIR}" "${CACHE_DIR}"
 
 if command -v curl >/dev/null 2>&1; then
-  curl -fsSL "${REPO_RAW}/config/config.json.example" -o "${CONFIG_FILE}"
+  curl -fsSL "${REPO_RAW}/config/config.json.example" -o "${TMP_CONFIG}"
 elif command -v wget >/dev/null 2>&1; then
-  wget -qO "${CONFIG_FILE}" "${REPO_RAW}/config/config.json.example"
+  wget -qO "${TMP_CONFIG}" "${REPO_RAW}/config/config.json.example"
 else
   echo "Error: curl or wget is required." >&2
   exit 1
 fi
 
+if [ -n "${TORBOX_API_KEY}" ] && command -v sed >/dev/null 2>&1; then
+  ESCAPED_KEY=$(printf '%s' "${TORBOX_API_KEY}" | sed 's/[\/&]/\\&/g')
+  sed -i "s/\"api_key\": \"\"/\"api_key\": \"${ESCAPED_KEY}\"/" "${TMP_CONFIG}"
+fi
+
+run_root cp "${TMP_CONFIG}" "${CONFIG_FILE}"
+run_root chmod 644 "${CONFIG_FILE}"
+rm -f "${TMP_CONFIG}"
+
 if [ -n "${TORBOX_API_KEY}" ]; then
-  if command -v sed >/dev/null 2>&1; then
-    # Escape characters that could break sed replacement
-    ESCAPED_KEY=$(printf '%s' "${TORBOX_API_KEY}" | sed 's/[\/&]/\\&/g')
-    sed -i "s/\"api_key\": \"\"/\"api_key\": \"${ESCAPED_KEY}\"/" "${CONFIG_FILE}"
-    echo "Torbox API key written to ${CONFIG_FILE}"
-  else
-    echo "Warning: sed not found. Set api_key manually in ${CONFIG_FILE}"
-  fi
+  echo "Torbox API key written to ${CONFIG_FILE}"
 else
   echo ""
   echo "Next: edit ${CONFIG_FILE} and set your Torbox api_key,"
