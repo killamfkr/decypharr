@@ -248,3 +248,84 @@ docker logs decypharr 2>&1 | grep -iE 'timeout waiting for symlink|Download comp
 
 If you see a symlink timeout, the release is too large for the old 2-minute limit — switch to a single-file `.mkv` release.
 
+## Plex: direct play works, mobile transcode fails
+
+**Symptom:** Desktop/TV plays fine (direct play), phone shows `Conversion failed. The transcoder exited due to an error`.
+
+**Cause:** Symlinks + `vfs_cache_mode: off` are fine for direct play (small reads). Mobile forces **transcoding** — Plex/ffmpeg must read much more of the file through Torbox. Without a local rclone cache, that fails.
+
+### Fix: streaming profile (symlinks + mobile transcode)
+
+You need **both**:
+
+1. A decypharr image **with rclone RC size fixes** (not `cy01/blackhole:latest`)
+2. `vfs_cache_mode: full` with **no manual size fields** in config
+3. A large cache volume (`/DATA/AppData/decypharr/cache` → `/cache`, **30GB+ free**)
+
+**Config** — only change `vfs_cache_mode` (do not add `vfs_cache_max_size`, `buffer_size`, etc.):
+
+```json
+"mount": {
+  "type": "rclone",
+  "mount_path": "/mnt",
+  "rclone": {
+    "cache_dir": "/cache/rclone",
+    "vfs_cache_mode": "full",
+    "transfers": 4
+  }
+}
+```
+
+See [`config.streaming.json.example`](config/config.streaming.json.example) for a full example.
+
+**Install script:**
+
+```bash
+TORBOX_API_KEY=YOUR_KEY sh -c 'curl -fsSL https://raw.githubusercontent.com/killamfkr/decypharr/cursor/zimaos-torbox-rclone-edec/deploy/zimaos/install-config-streaming.sh | sh'
+docker restart decypharr
+```
+
+**Build a fixed image on ZimaOS** (if no prebuilt image yet):
+
+```bash
+git clone https://github.com/killamfkr/decypharr.git
+cd decypharr
+git checkout cursor/zimaos-torbox-rclone-edec
+docker build -t decypharr:streaming .
+```
+
+In ZimaOS, change the decypharr app image to `decypharr:streaming` (or your registry tag), keep the same volumes, restart.
+
+Verify mount succeeds:
+
+```bash
+docker logs decypharr --tail 30 | grep -i mount
+ls /DATA/AppData/decypharr/mount/__all__/
+```
+
+### Plex container (symlinks + transcode)
+
+Plex still needs the full symlink chain **and** transcode space:
+
+```
+/DATA/Media/Movies                    →  /data/movies
+/DATA/AppData/decypharr/mount         →  /mnt
+/DATA/AppData/decypharr/downloads     →  /app/downloads
+/DATA/AppData/decypharr/plex-transcode → /transcode   (optional, recommended)
+```
+
+**Plex → Settings → Transcoder:** set **Hardware acceleration** to **Off** on ZimaOS first (HW + cloud mounts often fail).
+
+First mobile transcode of a 4K title will be **slow** while rclone fills `/cache/rclone` — that is normal.
+
+### Fallback: Radarr copy for mobile (works on any image)
+
+If you cannot switch images yet:
+
+1. Add Radarr root folder `/data/movies-mobile` → host `/DATA/Media/Movies-Mobile`
+2. Create a **1080p WEB/x264** quality profile for phone-friendly releases
+3. Disable **Use Hardlinks** so Radarr **copies** real files into that folder
+4. Add a second Plex library **Movies (Mobile)** pointing at `/data/movies-mobile`
+
+Copies use disk space but transcode reliably without rclone cache.
+

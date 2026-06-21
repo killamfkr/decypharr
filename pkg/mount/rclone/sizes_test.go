@@ -9,8 +9,10 @@ func TestSizeForRC(t *testing.T) {
 		wantOK bool
 	}{
 		{"16MB", 16 * 1024 * 1024, true},
+		{"16M", 16 * 1024 * 1024, true},
 		{"128MB", 128 * 1024 * 1024, true},
 		{"10GB", 10 * 1024 * 1024 * 1024, true},
+		{"10G", 10 * 1024 * 1024 * 1024, true},
 		{"off", 0, false},
 		{"", 0, false},
 	}

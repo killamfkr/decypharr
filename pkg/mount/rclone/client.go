@@ -87,7 +87,12 @@ func (m *Manager) performMount(ctx context.Context) error {
 
 	configOpts := make(map[string]interface{})
 
-	setRCSize(configOpts, "BufferSize", cfg.Rclone.BufferSize)
+	cacheEnabled := cfg.Rclone.VfsCacheMode != "" && cfg.Rclone.VfsCacheMode != "off"
+	if cacheEnabled {
+		setRCSizeWithDefault(configOpts, "BufferSize", cfg.Rclone.BufferSize, defaultRCBufferSize)
+	} else {
+		setRCSize(configOpts, "BufferSize", cfg.Rclone.BufferSize)
+	}
 
 	if len(configOpts) > 0 {
 		// Only add _config if there are options to set
@@ -100,19 +105,19 @@ func (m *Manager) performMount(ctx context.Context) error {
 	vfsOpt["PollInterval"] = 0 // Poll interval not supported for webdav, set to 0
 
 	// AddOrUpdate VFS options if caching is enabled
-	if cfg.Rclone.VfsCacheMode != "off" {
+	if cacheEnabled {
 
 		if cfg.Rclone.VfsCacheMaxAge != "" {
 			vfsOpt["CacheMaxAge"] = cfg.Rclone.VfsCacheMaxAge
 		}
 		setRCSize(vfsOpt, "DiskSpaceTotalSize", cfg.Rclone.VfsDiskSpaceTotal)
 		setRCSize(vfsOpt, "ChunkSizeLimit", cfg.Rclone.VfsReadChunkSizeLimit)
-		setRCSize(vfsOpt, "CacheMaxSize", cfg.Rclone.VfsCacheMaxSize)
+		setRCSizeWithDefault(vfsOpt, "CacheMaxSize", cfg.Rclone.VfsCacheMaxSize, defaultRCCacheMaxSize)
 		if cfg.Rclone.VfsCachePollInterval != "" {
 			vfsOpt["CachePollInterval"] = cfg.Rclone.VfsCachePollInterval
 		}
-		setRCSize(vfsOpt, "ChunkSize", cfg.Rclone.VfsReadChunkSize)
-		setRCSize(vfsOpt, "ReadAhead", cfg.Rclone.VfsReadAhead)
+		setRCSizeWithDefault(vfsOpt, "ChunkSize", cfg.Rclone.VfsReadChunkSize, defaultRCChunkSize)
+		setRCSizeWithDefault(vfsOpt, "ReadAhead", cfg.Rclone.VfsReadAhead, defaultRCReadAhead)
 		setRCSize(vfsOpt, "CacheMinFreeSpace", cfg.Rclone.VfsCacheMinFreeSpace)
 
 		if cfg.Rclone.VfsFastFingerprint {
