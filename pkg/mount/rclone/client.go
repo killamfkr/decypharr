@@ -20,8 +20,8 @@ func (m *Manager) mountWithRetry(ctx context.Context, maxRetries int) error {
 		func() error {
 			return m.performMount(ctx)
 		},
-		retry.Attempts(uint(maxRetries)+1),
-		retry.Delay(config.DefaultRetryDelay),
+		retry.Attempts(uint(maxRetries) + 1),
+		retry.Delay(2*time.Second),
 		retry.DelayType(retry.FixedDelay),
 		retry.LastErrorOnly(true),
 		retry.RetryIf(func(err error) bool {

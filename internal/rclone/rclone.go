@@ -159,6 +159,9 @@ func (r *Client) Unmount(ctx context.Context, mountPoint string) error {
 }
 
 func (r *Client) Mount(ctx context.Context, mountArgs map[string]interface{}) error {
+	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	defer cancel()
+
 	req := Request{
 		Command: "mount/mount",
 		Args:    mountArgs,

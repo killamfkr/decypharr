@@ -274,7 +274,11 @@ func (m *Manager) startMount(ctx context.Context) error {
 		return fmt.Errorf("rclone RC server is not reachable: %w", err)
 	}
 
-	if err := m.mountWithRetry(ctx, 3); err != nil {
+	if err := m.waitForWebDAV(ctx); err != nil {
+		return err
+	}
+
+	if err := m.mountWithRetry(ctx, 10); err != nil {
 		m.logger.Error().Err(err).Msg("Mount operation failed")
 		return err
 	}

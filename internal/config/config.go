@@ -434,6 +434,11 @@ func (c *Config) setDefaults() {
 		}
 	}
 
+	// Docker/ZimaOS images bind the host mount volume at /mnt directly.
+	if c.Mount.MountPath == "/mnt/decypharr" {
+		c.Mount.MountPath = "/mnt"
+	}
+
 	// Move WebDav global settings to Manager if not set
 	if c.Mount.ExternalRclone.RCUrl == "" {
 		c.Mount.ExternalRclone.RCUrl = firstDebrid.RcUrl

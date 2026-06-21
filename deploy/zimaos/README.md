@@ -46,7 +46,26 @@ docker exec decypharr ls -la /mnt
 
 The startup script writes config once, then runs decypharr without the API key env var so sizes are not re-injected.
 
-## After mount works
+### Still failing with `giving up after 4 attempt(s)`?
+
+1. **Confirm mount path** (must be `/mnt`, not `/mnt/decypharr`):
+   ```bash
+   docker exec decypharr cat /app/config.json | grep mount_path
+   ```
+
+2. **Check the real rclone error**:
+   ```bash
+   docker exec decypharr tail -50 /app/logs/rclone.log
+   ```
+
+3. **Clear a stale mount and restart**:
+   ```bash
+   docker exec decypharr fusermount3 -uz /mnt/decypharr 2>/dev/null || true
+   docker exec decypharr fusermount3 -uz /mnt 2>/dev/null || true
+   docker restart decypharr
+   ```
+
+4. Re-run the config installer from the README, remove all API key env vars, restart again.
 
 Files appear under `/mnt/__all__/` after you add torrents via Sonarr/Radarr or the Decypharr UI.
 
