@@ -2,53 +2,90 @@
 
 Turnkey setup for ZimaOS with embedded rclone mounting. You only need to add your Torbox API key.
 
-## Quick Start
+## Quick Start (no git clone required)
 
-### 1. Create folders on ZimaOS
+SSH into your ZimaOS device and run **one** of these:
 
-SSH into your ZimaOS device and run:
-
-```bash
-mkdir -p /DATA/AppData/decypharr/config
-mkdir -p /DATA/AppData/decypharr/mount
-mkdir -p /DATA/AppData/decypharr/cache
-```
-
-If your storage is not under `/DATA`, replace paths with your actual storage location (for example `/media/Storage/AppData/decypharr/...`).
-
-### 2. Copy the pre-made config
+### Option A: Install script (recommended)
 
 ```bash
-cp config/config.json.example /DATA/AppData/decypharr/config/config.json
+TORBOX_API_KEY=your_actual_api_key curl -fsSL \
+  https://raw.githubusercontent.com/killamfkr/decypharr/cursor/zimaos-torbox-rclone-edec/deploy/zimaos/install.sh | sh
 ```
 
-### 3. Set your Torbox API key
-
-Create a `.env` file next to `docker-compose.yml`:
+### Option B: Download config directly
 
 ```bash
-cp .env.example .env
+mkdir -p /DATA/AppData/decypharr/{config,mount,cache}
+
+curl -fsSL \
+  https://raw.githubusercontent.com/killamfkr/decypharr/cursor/zimaos-torbox-rclone-edec/deploy/zimaos/config/config.json.example \
+  -o /DATA/AppData/decypharr/config/config.json
 ```
 
-Edit `.env` and set your key:
+Then edit `/DATA/AppData/decypharr/config/config.json` and paste your Torbox API key into the `"api_key"` field.
 
-```env
-TORBOX_API_KEY=your_actual_api_key
+### Option C: Create config manually
+
+If download fails, create the file directly:
+
+```bash
+mkdir -p /DATA/AppData/decypharr/{config,mount,cache}
+
+cat > /DATA/AppData/decypharr/config/config.json <<'EOF'
+{
+  "bind_address": "0.0.0.0",
+  "port": "8282",
+  "log_level": "info",
+  "use_auth": false,
+  "download_folder": "/app/downloads",
+  "categories": ["sonarr", "radarr"],
+  "debrids": [
+    {
+      "provider": "torbox",
+      "name": "torbox",
+      "api_key": "PASTE_YOUR_TORBOX_API_KEY_HERE"
+    }
+  ],
+  "mount": {
+    "type": "rclone",
+    "mount_path": "/mnt/decypharr",
+    "rclone": {
+      "cache_dir": "/cache/rclone",
+      "vfs_cache_mode": "writes",
+      "vfs_cache_max_size": "10GB",
+      "vfs_read_chunk_size": "128MB",
+      "vfs_read_ahead": "256MB",
+      "buffer_size": "16MB",
+      "transfers": 4
+    }
+  }
+}
+EOF
 ```
 
-Get your API key from the [Torbox dashboard](https://torbox.app/settings).
+Replace `PASTE_YOUR_TORBOX_API_KEY_HERE` with your real key from the [Torbox dashboard](https://torbox.app/settings).
 
-### 4. Install in ZimaOS
+## Install in ZimaOS
 
 1. Open the ZimaOS dashboard
 2. Click **+** → **Install a customized app**
 3. Go to the **Docker Compose** tab
-4. Paste the contents of `docker-compose.yml`
+4. Paste the contents of [`docker-compose.yml`](docker-compose.yml) (or download it from the repo)
 5. Update the three volume `source` paths if your storage is not under `/DATA`
-6. Add the `TORBOX_API_KEY` environment variable (or use Compose Toolbox with the `.env` file)
+6. Add environment variable `TORBOX_API_KEY` with your API key (optional if already in `config.json`)
 7. Click **Submit** and start the app
 
-### 5. Open Decypharr
+### Docker Compose download
+
+```bash
+curl -fsSL \
+  https://raw.githubusercontent.com/killamfkr/decypharr/cursor/zimaos-torbox-rclone-edec/deploy/zimaos/docker-compose.yml
+```
+
+Copy the output into the ZimaOS Docker Compose installer.
+
+## Open Decypharr
 
 Visit `http://<your-zimaos-ip>:8282`
 
@@ -78,12 +115,16 @@ volumes:
 
 ## What is pre-configured
 
-- **Debrid**: Torbox (API key from `TORBOX_API_KEY`)
+- **Debrid**: Torbox (API key in `config.json` or `TORBOX_API_KEY` env var)
 - **Mount**: Embedded rclone at `/mnt/decypharr`
 - **Cache**: `/cache/rclone` on your storage drive (not eMMC)
 - **FUSE**: `/dev/fuse`, `SYS_ADMIN`, and `rshared` mount propagation
 
 ## Troubleshooting
+
+### `cp: cannot stat 'deploy/zimaos/...'`
+
+That path only exists inside the git repo. Use the **curl** or **install script** commands above instead — they download the files directly to ZimaOS.
 
 ### Rclone mount fails
 
@@ -102,4 +143,4 @@ This preset stores rclone cache at `/DATA/AppData/decypharr/cache`. Keep that pa
 
 ### API key not picked up
 
-Set `TORBOX_API_KEY` in the container environment. Decypharr also accepts `DECYPHARR_TORBOX_API_KEY`.
+Either set `"api_key"` in `/DATA/AppData/decypharr/config/config.json`, or set `TORBOX_API_KEY` in the container environment. Decypharr also accepts `DECYPHARR_TORBOX_API_KEY`.
