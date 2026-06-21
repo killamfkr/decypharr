@@ -1,0 +1,34 @@
+name: decypharr
+services:
+  decypharr:
+    image: cy01/blackhole:latest
+    container_name: decypharr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - TORBOX_API_KEY=${TORBOX_API_KEY}
+    ports:
+      - target: 8282
+        published: "8282"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: /DATA/AppData/decypharr/config
+        target: /app
+      - type: bind
+        source: /DATA/AppData/decypharr/mount
+        target: /mnt
+        bind:
+          propagation: rshared
+      - type: bind
+        source: /DATA/AppData/decypharr/cache
+        target: /cache
+    devices:
+      - /dev/fuse:/dev/fuse:rwm
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    restart: unless-stopped
+    network_mode: bridge

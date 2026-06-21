@@ -90,26 +90,39 @@ func (c *Config) applyDebridEnvVars() {
 	// Debrid providers array
 	for i := 0; i < 10; i++ { // Support up to 10 debrid providers
 		prefix := fmt.Sprintf("DEBRIDS__%d__", i)
-		if val := getEnv(prefix + "NAME"); val != "" {
-			// Ensure array is large enough
-			if i >= len(c.Debrids) {
-				c.Debrids = append(c.Debrids, make([]Debrid, i-len(c.Debrids)+1)...)
-			}
-			c.Debrids[i].Name = val
+		name := getEnv(prefix + "NAME")
+		apiKey := getEnv(prefix + "API_KEY")
+		provider := getEnv(prefix + "PROVIDER")
+		folder := getEnv(prefix + "FOLDER")
+		proxy := getEnv(prefix + "PROXY")
 
-			// Set other debrid fields
-			if apiKey := getEnv(prefix + "API_KEY"); apiKey != "" {
-				c.Debrids[i].APIKey = apiKey
-			}
-			if folder := getEnv(prefix + "FOLDER"); folder != "" {
-				c.Debrids[i].Folder = folder
-			}
-			if provider := getEnv(prefix + "PROVIDER"); provider != "" {
-				c.Debrids[i].Provider = provider
-			}
-			if proxy := getEnv(prefix + "PROXY"); proxy != "" {
-				c.Debrids[i].Proxy = proxy
-			}
+		if name == "" && apiKey == "" && provider == "" && folder == "" && proxy == "" {
+			break
 		}
+
+		// Ensure array is large enough
+		if i >= len(c.Debrids) {
+			c.Debrids = append(c.Debrids, make([]Debrid, i-len(c.Debrids)+1)...)
+		}
+
+		if name != "" {
+			c.Debrids[i].Name = name
+		}
+		if apiKey != "" {
+			c.Debrids[i].APIKey = apiKey
+		}
+		if folder != "" {
+			c.Debrids[i].Folder = folder
+		}
+		if provider != "" {
+			c.Debrids[i].Provider = provider
+		}
+		if proxy != "" {
+			c.Debrids[i].Proxy = proxy
+		}
+	}
+
+	if apiKey := torboxAPIKeyFromEnv(); apiKey != "" {
+		c.bootstrapTorboxRclone(apiKey)
 	}
 }

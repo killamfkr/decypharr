@@ -221,6 +221,8 @@ func (c *Config) loadConfig() error {
 	// Apply environment variable overrides
 	c.applyEnvOverrides()
 
+	c.ensureBootstrapDirectories()
+
 	return nil
 }
 
@@ -603,7 +605,13 @@ func (c *Config) createConfig() error {
 	c.URLBase = "/"
 	c.Port = DefaultPort
 	c.LogLevel = DefaultLogLevel
-	c.UseAuth = true
+	c.UseAuth = false
+	c.BindAddress = "0.0.0.0"
+
+	if apiKey := torboxAPIKeyFromEnv(); apiKey != "" {
+		c.bootstrapTorboxRclone(apiKey)
+	}
+
 	return nil
 }
 

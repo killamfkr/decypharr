@@ -53,6 +53,10 @@ services:
 
 For complete documentation, please visit our [Documentation](https://docs.decypharr.com).
 
+### ZimaOS (Torbox + Rclone)
+
+A turnkey ZimaOS deployment is available in [`deploy/zimaos/`](deploy/zimaos/). Copy the compose file, set `TORBOX_API_KEY` in `.env`, and start the container — rclone mounting is pre-configured.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
