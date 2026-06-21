@@ -74,3 +74,54 @@ docker exec decypharr ls -la /mnt
 ```
 
 Expected: `__all__`, `__bad__`, `torrents`, `torbox`
+
+## `transport endpoint is not connected` on restart
+
+This happens when the container stops while rclone is still mounted. The host folder `/DATA/AppData/decypharr/mount` becomes a broken FUSE mount and Docker cannot restart.
+
+**Fix on ZimaOS (SSH):**
+
+```bash
+# 1. Stop the container (force if needed)
+docker stop decypharr 2>/dev/null || true
+docker rm -f decypharr 2>/dev/null || true
+
+# 2. Unmount the stale FUSE mount on the HOST
+sudo fusermount3 -uz /DATA/AppData/decypharr/mount 2>/dev/null || true
+sudo umount -l /DATA/AppData/decypharr/mount 2>/dev/null || true
+
+# 3. Recreate the directory if it is missing or still broken
+sudo mkdir -p /DATA/AppData/decypharr/mount
+sudo mkdir -p /DATA/AppData/decypharr/downloads
+
+# 4. Start decypharr again from the ZimaOS UI (or docker compose up -d)
+```
+
+If step 2 fails with "not mounted", run:
+
+```bash
+sudo ls -la /DATA/AppData/decypharr/mount
+mount | grep decypharr
+```
+
+Then start the app from ZimaOS. The rclone mount is recreated inside the container on startup.
+
+**Tip:** Stop Decypharr from the UI and wait a few seconds before editing volumes or restarting, so rclone can unmount cleanly.
+
+## Sonarr / Radarr volumes
+
+Add these to Sonarr and Radarr (read-only is fine):
+
+```yaml
+/DATA/AppData/decypharr/mount:/mnt:ro
+/DATA/AppData/decypharr/downloads:/app/downloads:ro
+```
+
+Decypharr also needs the downloads folder:
+
+```yaml
+/DATA/AppData/decypharr/downloads:/app/downloads
+```
+
+Set `"download_folder": "/app/downloads"` in `config.json`.
+
