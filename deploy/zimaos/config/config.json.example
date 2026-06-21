@@ -19,7 +19,7 @@
     "mount_path": "/mnt",
     "rclone": {
       "cache_dir": "/cache/rclone",
-      "vfs_cache_mode": "writes",
+      "vfs_cache_mode": "off",
       "transfers": 4
     }
   }

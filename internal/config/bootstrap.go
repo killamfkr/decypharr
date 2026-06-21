@@ -26,10 +26,6 @@ func (c *Config) bootstrapTorboxRclone(apiKey string) {
 		return
 	}
 
-	if c.BindAddress == "" {
-		c.BindAddress = "0.0.0.0"
-	}
-
 	if c.DownloadFolder == "" {
 		c.DownloadFolder = defaultDownloadFolder
 	}
@@ -51,19 +47,7 @@ func (c *Config) bootstrapTorboxRclone(apiKey string) {
 	}
 
 	if c.Mount.Rclone.VfsCacheMode == "" {
-		c.Mount.Rclone.VfsCacheMode = "writes"
-	}
-
-	if c.Mount.Rclone.VfsReadChunkSize == "" {
-		c.Mount.Rclone.VfsReadChunkSize = "128MB"
-	}
-
-	if c.Mount.Rclone.VfsReadAhead == "" {
-		c.Mount.Rclone.VfsReadAhead = "256MB"
-	}
-
-	if c.Mount.Rclone.BufferSize == "" {
-		c.Mount.Rclone.BufferSize = "16MB"
+		c.Mount.Rclone.VfsCacheMode = "off"
 	}
 
 	if len(c.Debrids) == 0 {

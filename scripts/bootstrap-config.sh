@@ -27,11 +27,7 @@ bootstrap_torbox_config() {
     "mount_path": "/mnt",
     "rclone": {
       "cache_dir": "/cache/rclone",
-      "vfs_cache_mode": "writes",
-      "vfs_cache_max_size": "10GB",
-      "vfs_read_chunk_size": "128MB",
-      "vfs_read_ahead": "256MB",
-      "buffer_size": "16MB",
+      "vfs_cache_mode": "off",
       "transfers": 4
     }
   }
