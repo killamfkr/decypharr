@@ -1,0 +1,40 @@
+{
+  "port": "8282",
+  "log_level": "info",
+  "use_auth": false,
+  "download_folder": "/app/downloads",
+  "categories": [
+    "sonarr",
+    "radarr"
+  ],
+  "custom_folders": {
+    "Movies": {
+      "filters": {
+        "not_regex": "(?i)(S\\d{1,4}E\\d{1,4}|Season[\\s._-]?\\d+)",
+        "not_files_regex": "(?i)(S\\d{1,4}E\\d{1,4}|Season[\\s._-]?\\d+)"
+      }
+    },
+    "Series": {
+      "filters": {
+        "regex": "(?i)(S\\d{1,4}E\\d{1,4}|Season[\\s._-]?\\d+)",
+        "files_regex": "(?i)(S\\d{1,4}E\\d{1,4}|Season[\\s._-]?\\d+)"
+      }
+    }
+  },
+  "debrids": [
+    {
+      "provider": "torbox",
+      "name": "torbox",
+      "api_key": ""
+    }
+  ],
+  "mount": {
+    "type": "rclone",
+    "mount_path": "/mnt",
+    "rclone": {
+      "cache_dir": "/cache/rclone",
+      "vfs_cache_mode": "off",
+      "transfers": 4
+    }
+  }
+}

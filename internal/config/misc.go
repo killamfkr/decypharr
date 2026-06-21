@@ -106,15 +106,25 @@ func ParseSize(sizeStr string) (int64, error) {
 
 	// Absolute size-based cache
 	multiplier := 1.0
-	if strings.HasSuffix(sizeStr, "GB") {
+	switch {
+	case strings.HasSuffix(sizeStr, "GB"):
 		multiplier = 1024 * 1024 * 1024
 		sizeStr = strings.TrimSuffix(sizeStr, "GB")
-	} else if strings.HasSuffix(sizeStr, "MB") {
+	case strings.HasSuffix(sizeStr, "MB"):
 		multiplier = 1024 * 1024
 		sizeStr = strings.TrimSuffix(sizeStr, "MB")
-	} else if strings.HasSuffix(sizeStr, "KB") {
+	case strings.HasSuffix(sizeStr, "KB"):
 		multiplier = 1024
 		sizeStr = strings.TrimSuffix(sizeStr, "KB")
+	case strings.HasSuffix(sizeStr, "G"):
+		multiplier = 1024 * 1024 * 1024
+		sizeStr = strings.TrimSuffix(sizeStr, "G")
+	case strings.HasSuffix(sizeStr, "M"):
+		multiplier = 1024 * 1024
+		sizeStr = strings.TrimSuffix(sizeStr, "M")
+	case strings.HasSuffix(sizeStr, "K"):
+		multiplier = 1024
+		sizeStr = strings.TrimSuffix(sizeStr, "K")
 	}
 
 	size, err := strconv.ParseFloat(sizeStr, 64)

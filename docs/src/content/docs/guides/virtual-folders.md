@@ -89,6 +89,7 @@ This folder shows items with `2160p` in the name and hides items with `sample` i
 | `last_added`    | The item was added within this time period                    |
 | `file_count_gt` | The item has more files than this number                      |
 | `file_count_lt` | The item has fewer files than this number                     |
+| `category`      | The Arr category matches exactly (`sonarr`, `radarr`, etc.)   |
 
 Sizes can use `KB`, `MB`, or `GB`, such as `700MB` or `10GB`.
 
@@ -110,6 +111,16 @@ You can also create virtual folders directly in `config.json`:
     "Recently Added": {
       "filters": {
         "last_added": "7d"
+      }
+    },
+    "Movies": {
+      "filters": {
+        "category": "radarr"
+      }
+    },
+    "Series": {
+      "filters": {
+        "category": "sonarr"
       }
     }
   }

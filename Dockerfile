@@ -88,8 +88,11 @@ RUN apk add --no-cache fuse3 ca-certificates su-exec shadow curl unzip tzdata &&
 COPY --from=builder /decypharr /usr/bin/decypharr
 COPY --from=builder /healthcheck /usr/bin/healthcheck
 COPY --from=ffprobe-extractor /ffprobe /usr/bin/ffprobe
+COPY scripts/bootstrap-config.sh /bootstrap-config.sh
 COPY scripts/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY scripts/zimaos-start.sh /zimaos-start.sh
+COPY deploy/zimaos/config/config.json.example /defaults/config.json
+RUN chmod +x /entrypoint.sh /bootstrap-config.sh /zimaos-start.sh
 
 # Set environment variables
 ENV PUID=1000

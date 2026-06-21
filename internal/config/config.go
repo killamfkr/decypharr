@@ -221,6 +221,8 @@ func (c *Config) loadConfig() error {
 	// Apply environment variable overrides
 	c.applyEnvOverrides()
 
+	c.ensureBootstrapDirectories()
+
 	return nil
 }
 
@@ -432,6 +434,11 @@ func (c *Config) setDefaults() {
 		}
 	}
 
+	// Docker/ZimaOS images bind the host mount volume at /mnt directly.
+	if c.Mount.MountPath == "/mnt/decypharr" {
+		c.Mount.MountPath = "/mnt"
+	}
+
 	// Move WebDav global settings to Manager if not set
 	if c.Mount.ExternalRclone.RCUrl == "" {
 		c.Mount.ExternalRclone.RCUrl = firstDebrid.RcUrl
@@ -603,7 +610,13 @@ func (c *Config) createConfig() error {
 	c.URLBase = "/"
 	c.Port = DefaultPort
 	c.LogLevel = DefaultLogLevel
-	c.UseAuth = true
+	c.UseAuth = false
+	c.BindAddress = "0.0.0.0"
+
+	if apiKey := torboxAPIKeyFromEnv(); apiKey != "" {
+		c.bootstrapTorboxRclone(apiKey)
+	}
+
 	return nil
 }
 

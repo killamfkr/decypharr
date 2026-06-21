@@ -35,6 +35,8 @@ const (
 	filterByFileCountLT   string = "file_count_lt"
 	filterByFilesRegex    string = "files_regex"
 	filterByNotFilesRegex string = "not_files_regex"
+
+	filterByCategory string = "category"
 )
 
 type CustomFolders struct {
@@ -83,7 +85,7 @@ func (m *Manager) GetCustomFolders() []string {
 
 // matchesFilter checks if a torrent matches all filters for a folder.
 // getFileNames is a lazy loader called only when files_regex/not_files_regex/file_count filters are needed.
-func (cf *CustomFolders) matchesFilter(folderName string, fileInfo os.FileInfo, addedTime time.Time, getFileNames func() []string) bool {
+func (cf *CustomFolders) matchesFilter(folderName string, fileInfo os.FileInfo, addedTime time.Time, category string, getFileNames func() []string) bool {
 	filters, ok := cf.filters[folderName]
 	if !ok {
 		return false
@@ -136,7 +138,7 @@ func (cf *CustomFolders) matchesFilter(folderName string, fileInfo os.FileInfo, 
 	} else {
 		// Single type present — AND logic
 		for _, filter := range append(regexFilters, filesRegexFilters...) {
-			if !cf.checkSingleFilter(filter, fileInfo, addedTime, getFileNames) {
+			if !cf.checkSingleFilter(filter, fileInfo, addedTime, category, getFileNames) {
 				return false
 			}
 		}
@@ -144,7 +146,7 @@ func (cf *CustomFolders) matchesFilter(folderName string, fileInfo os.FileInfo, 
 
 	// All other filters AND match
 	for _, filter := range otherFilters {
-		if !cf.checkSingleFilter(filter, fileInfo, addedTime, getFileNames) {
+		if !cf.checkSingleFilter(filter, fileInfo, addedTime, category, getFileNames) {
 			return false
 		}
 	}
@@ -153,11 +155,13 @@ func (cf *CustomFolders) matchesFilter(folderName string, fileInfo os.FileInfo, 
 }
 
 // checkSingleFilter checks if a single filter matches
-func (cf *CustomFolders) checkSingleFilter(filter directoryFilter, fileInfo os.FileInfo, addedTime time.Time, getFileNames func() []string) bool {
+func (cf *CustomFolders) checkSingleFilter(filter directoryFilter, fileInfo os.FileInfo, addedTime time.Time, category string, getFileNames func() []string) bool {
 	name := fileInfo.Name()
 	size := fileInfo.Size()
 
 	switch filter.filterType {
+	case filterByCategory:
+		return category == filter.value
 	case filterByInclude:
 		return strings.Contains(name, filter.value)
 	case filterByExclude:

@@ -53,6 +53,10 @@ services:
 
 For complete documentation, please visit our [Documentation](https://docs.decypharr.com).
 
+### ZimaOS (Torbox + Rclone)
+
+Copy [`deploy/zimaos/docker-compose.yml`](deploy/zimaos/docker-compose.yml) into ZimaOS custom app installer, set your `TORBOX_API_KEY`, and start — no other setup required.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
