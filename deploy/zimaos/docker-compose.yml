@@ -27,6 +27,9 @@ services:
       - type: bind
         source: /DATA/AppData/decypharr/cache
         target: /cache
+      - type: bind
+        source: /DATA/AppData/decypharr/downloads
+        target: /app/downloads
     devices:
       - /dev/fuse:/dev/fuse:rwm
     cap_add:
