@@ -19,7 +19,7 @@ If your storage is not under `/DATA`, replace paths with your actual storage loc
 ### 2. Copy the pre-made config
 
 ```bash
-cp config/config.json /DATA/AppData/decypharr/config/config.json
+cp config/config.json.example /DATA/AppData/decypharr/config/config.json
 ```
 
 ### 3. Set your Torbox API key
