@@ -87,9 +87,7 @@ func (m *Manager) performMount(ctx context.Context) error {
 
 	configOpts := make(map[string]interface{})
 
-	if cfg.Rclone.BufferSize != "" {
-		configOpts["BufferSize"] = cfg.Rclone.BufferSize
-	}
+	setRCSize(configOpts, "BufferSize", cfg.Rclone.BufferSize)
 
 	if len(configOpts) > 0 {
 		// Only add _config if there are options to set
@@ -107,29 +105,15 @@ func (m *Manager) performMount(ctx context.Context) error {
 		if cfg.Rclone.VfsCacheMaxAge != "" {
 			vfsOpt["CacheMaxAge"] = cfg.Rclone.VfsCacheMaxAge
 		}
-		if cfg.Rclone.VfsDiskSpaceTotal != "" {
-			vfsOpt["DiskSpaceTotalSize"] = cfg.Rclone.VfsDiskSpaceTotal
-		}
-		if cfg.Rclone.VfsReadChunkSizeLimit != "" {
-			vfsOpt["ChunkSizeLimit"] = cfg.Rclone.VfsReadChunkSizeLimit
-		}
-
-		if cfg.Rclone.VfsCacheMaxSize != "" {
-			vfsOpt["CacheMaxSize"] = cfg.Rclone.VfsCacheMaxSize
-		}
+		setRCSize(vfsOpt, "DiskSpaceTotalSize", cfg.Rclone.VfsDiskSpaceTotal)
+		setRCSize(vfsOpt, "ChunkSizeLimit", cfg.Rclone.VfsReadChunkSizeLimit)
+		setRCSize(vfsOpt, "CacheMaxSize", cfg.Rclone.VfsCacheMaxSize)
 		if cfg.Rclone.VfsCachePollInterval != "" {
 			vfsOpt["CachePollInterval"] = cfg.Rclone.VfsCachePollInterval
 		}
-		if cfg.Rclone.VfsReadChunkSize != "" {
-			vfsOpt["ChunkSize"] = cfg.Rclone.VfsReadChunkSize
-		}
-		if cfg.Rclone.VfsReadAhead != "" {
-			vfsOpt["ReadAhead"] = cfg.Rclone.VfsReadAhead
-		}
-
-		if cfg.Rclone.VfsCacheMinFreeSpace != "" {
-			vfsOpt["CacheMinFreeSpace"] = cfg.Rclone.VfsCacheMinFreeSpace
-		}
+		setRCSize(vfsOpt, "ChunkSize", cfg.Rclone.VfsReadChunkSize)
+		setRCSize(vfsOpt, "ReadAhead", cfg.Rclone.VfsReadAhead)
+		setRCSize(vfsOpt, "CacheMinFreeSpace", cfg.Rclone.VfsCacheMinFreeSpace)
 
 		if cfg.Rclone.VfsFastFingerprint {
 			vfsOpt["FastFingerprint"] = cfg.Rclone.VfsFastFingerprint

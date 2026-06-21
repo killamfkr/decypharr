@@ -10,8 +10,7 @@ write_config() {
         '"debrids":[{"provider":"torbox","name":"torbox","api_key":"' \
         "$TORBOX_API_KEY" \
         '"}],"mount":{"type":"rclone","mount_path":"/mnt","rclone":{' \
-        '"cache_dir":"/cache/rclone","vfs_cache_mode":"writes","vfs_cache_max_size":"10GB",' \
-        '"vfs_read_chunk_size":"128MB","vfs_read_ahead":"256MB","buffer_size":"16MB","transfers":4}}}' \
+        '"cache_dir":"/cache/rclone","vfs_cache_mode":"writes","transfers":4}}}' \
         > /app/config.json
 }
 
