@@ -110,7 +110,7 @@ Then start the app from ZimaOS. The rclone mount is recreated inside the contain
 
 ## Sonarr / Radarr volumes
 
-Add these to Sonarr and Radarr (read-only is fine):
+Add **both** of these to Sonarr and Radarr (read-only is fine):
 
 ```yaml
 /DATA/AppData/decypharr/mount:/mnt:ro
@@ -124,4 +124,61 @@ Decypharr also needs the downloads folder:
 ```
 
 Set `"download_folder": "/app/downloads"` in `config.json`.
+
+### How imports work (important)
+
+Decypharr does **not** copy the movie into `downloads/`. The flow is:
+
+1. Torbox caches the file → visible under `mount/__all__/Movie.Name/`
+2. Decypharr creates an empty folder → `downloads/radarr/Movie.Name/`
+3. Decypharr creates **symlinks** inside that folder → `movie.mkv` → `/mnt/__all__/Movie.Name/movie.mkv`
+4. Only then Radarr sees the torrent as **complete** (`pausedUP`, progress `1.0`) and imports
+
+Radarr must mount **both** `downloads` and `mount` at the same container paths (`/app/downloads` and `/mnt`), or the symlinks cannot be followed during import.
+
+In the Radarr download client, set **Category** to `radarr` (or `sonarr` in Sonarr).
+
+### Folder in `downloads/radarr` but movie only in `mount` / Radarr still "downloading"
+
+**1. Check whether symlinks exist yet** (on the ZimaOS host):
+
+```bash
+# Replace Movie.Name with your release folder name
+ls -la /DATA/AppData/decypharr/downloads/radarr/
+ls -la /DATA/AppData/decypharr/downloads/radarr/Movie.Name/
+ls -la /DATA/AppData/decypharr/mount/__all__/Movie.Name/
+```
+
+- **Empty `downloads/radarr/Movie.Name/`** → Decypharr is still waiting to link files, or the mount scan failed. Check logs:
+  ```bash
+  docker logs decypharr --tail 100 2>&1 | grep -iE 'symlink|mount files|processing action|error'
+  ```
+- **Symlinks present** (`movie.mkv -> /mnt/__all__/...`) → Decypharr finished; fix Radarr volumes (both `mount` and `downloads` above).
+
+**2. Confirm Radarr sees the same paths** (inside the Radarr container):
+
+```bash
+docker exec radarr ls -la /app/downloads/radarr/Movie.Name/
+docker exec radarr ls -la /mnt/__all__/Movie.Name/
+```
+
+If `/app/downloads` or `/mnt` is missing inside Radarr, add the volume mounts and restart Radarr.
+
+**3. Confirm torrent state in Decypharr** (should be `pausedUP` when done):
+
+```bash
+curl -s 'http://127.0.0.1:8282/api/v2/torrents/info' | head -c 2000
+```
+
+Look for `"state":"pausedUP"` and `"progress":1`. While still `"state":"downloading"`, Radarr will keep showing **Downloading**.
+
+**4. Match folder names** — files must be under `mount/__all__/`, not only under `mount/torbox/`:
+
+```bash
+ls /DATA/AppData/decypharr/mount/__all__/
+```
+
+**5. Optional — nudge Radarr after symlinks exist:** Activity → Queue → manual **Import** on the item.
+
+If symlinks never appear after ~5 minutes, paste the output of the `docker logs` grep above; common causes are a stale FUSE mount or Torbox still finishing on their side.
 
