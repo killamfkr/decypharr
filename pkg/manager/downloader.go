@@ -203,7 +203,7 @@ func (d *Downloader) processSymlink(entry *storage.Entry, mountPath string) erro
 	entry.IsDownloading = true
 	_ = d.manager.queue.Update(entry)
 
-	if err := d.waitForSymlinkFilesReady(filePaths, symlinkReadyTimeout); err != nil {
+	if err := d.waitForSymlinkFilesReady(filePaths, symlinkReadyTimeoutFor(len(filePaths))); err != nil {
 		return err
 	}
 
@@ -358,6 +358,21 @@ func (d *Downloader) waitForSymlinkFilesReady(filePaths []string, timeout time.D
 	return nil
 }
 
+func symlinkReadyTimeoutFor(fileCount int) time.Duration {
+	if fileCount <= 0 {
+		return symlinkReadyTimeout
+	}
+	// Large releases (e.g. full Blu-ray folders) need more time to verify on FUSE mounts.
+	scaled := time.Duration(fileCount) * 3 * time.Second
+	if scaled < symlinkReadyTimeout {
+		return symlinkReadyTimeout
+	}
+	if scaled > symlinkMountWaitTimeout {
+		return symlinkMountWaitTimeout
+	}
+	return scaled
+}
+
 func verifySymlinkFileReady(path string) error {
 	info, err := os.Lstat(path)
 	if err != nil {
@@ -374,12 +389,7 @@ func verifySymlinkFileReady(path string) error {
 	if targetInfo.IsDir() {
 		return fmt.Errorf("symlink target is a directory")
 	}
-
-	f, err := os.Open(path)
-	if err != nil {
-		return fmt.Errorf("symlink target cannot be opened: %w", err)
-	}
-	return f.Close()
+	return nil
 }
 
 func (d *Downloader) sleepUntilNextSymlinkAttempt(delay time.Duration, deadline time.Time) error {

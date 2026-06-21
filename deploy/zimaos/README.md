@@ -182,3 +182,27 @@ ls /DATA/AppData/decypharr/mount/__all__/
 
 If symlinks never appear after ~5 minutes, paste the output of the `docker logs` grep above; common causes are a stale FUSE mount or Torbox still finishing on their side.
 
+### Full Blu-ray disc releases (many `.m2ts` files)
+
+Releases like `COMPLETE.UHD.BLURAY` with hundreds of `.m2ts` segments are **full disc images**, not a single movie file.
+
+- Decypharr will symlink **every** segment (your logs show 500+ `File is ready` lines — that is normal).
+- Older images use a **2 minute** verify step after symlinking; large discs often hit `timeout waiting for symlink files` and never mark the torrent complete for Radarr.
+- **Radarr is not meant to import full Blu-ray disc folders** — use a **Remux** or **BluRay** `.mkv` release instead.
+
+**Workaround on the current image** (until an updated image is available):
+
+```json
+{
+  "skip_pre_cache": true
+}
+```
+
+Then check for completion errors:
+
+```bash
+docker logs decypharr 2>&1 | grep -iE 'timeout waiting for symlink|Download completed|Error running post-download'
+```
+
+If you see a symlink timeout, the release is too large for the old 2-minute limit — switch to a single-file `.mkv` release.
+
