@@ -31,35 +31,32 @@ services:
           exit 1
         fi
         if [ ! -f /app/config.json ]; then
-          cat > /app/config.json <<CFG
-        {
-          "bind_address": "0.0.0.0",
-          "port": "8282",
-          "log_level": "info",
-          "use_auth": false,
-          "download_folder": "/app/downloads",
-          "categories": ["sonarr", "radarr"],
-          "debrids": [
-            {
-              "provider": "torbox",
-              "name": "torbox",
-              "api_key": "$$TORBOX_API_KEY"
-            }
-          ],
-          "mount": {
-            "type": "rclone",
-            "mount_path": "/mnt/decypharr",
-            "rclone": {
-              "cache_dir": "/cache/rclone",
-              "vfs_cache_mode": "writes",
-              "vfs_cache_max_size": "10GB",
-              "vfs_read_chunk_size": "128MB",
-              "vfs_read_ahead": "256MB",
-              "buffer_size": "16MB",
-              "transfers": 4
-            }
-          }
-        }
-        CFG
+          printf '%s\n' \
+            '{' \
+            '  "bind_address": "0.0.0.0",' \
+            '  "port": "8282",' \
+            '  "log_level": "info",' \
+            '  "use_auth": false,' \
+            '  "download_folder": "/app/downloads",' \
+            '  "categories": ["sonarr", "radarr"],' \
+            '  "debrids": [{' \
+            '    "provider": "torbox",' \
+            '    "name": "torbox",' \
+            '    "api_key": "'$$TORBOX_API_KEY'"' \
+            '  }],' \
+            '  "mount": {' \
+            '    "type": "rclone",' \
+            '    "mount_path": "/mnt/decypharr",' \
+            '    "rclone": {' \
+            '      "cache_dir": "/cache/rclone",' \
+            '      "vfs_cache_mode": "writes",' \
+            '      "vfs_cache_max_size": "10GB",' \
+            '      "vfs_read_chunk_size": "128MB",' \
+            '      "vfs_read_ahead": "256MB",' \
+            '      "buffer_size": "16MB",' \
+            '      "transfers": 4' \
+            '    }' \
+            '  }' \
+            '}' > /app/config.json
         fi
         exec /entrypoint.sh /usr/bin/decypharr --config /app
